@@ -34,21 +34,24 @@ try {
   assert(login.ok && login.verified && login.token, "wallet login should return verified token");
 
   const manual = await postJson("/leaderboard", {
-    entry: leaderboardEntry(`${room}-manual`, address, { verified: true, walletLabel: "Manual Claim" }),
+    entry: leaderboardEntry(`${room}-manual`, address, { verified: true, walletLabel: "Manual Claim", wagerUnit: "ticket" }),
   });
   assert(manual.submitted?.wallet === address, "manual leaderboard wallet was not preserved");
   assert(manual.submitted?.verified === false, "manual leaderboard row must not self-verify");
+  assert(manual.submitted?.wagerUnit === "ticket", "manual leaderboard row should remain ticket-mode");
 
   const verified = await postJson("/leaderboard", {
     walletToken: login.token,
-    entry: leaderboardEntry(`${room}-verified`, address, { walletLabel: "Signed Wallet" }),
+    entry: leaderboardEntry(`${room}-verified`, address, { walletLabel: "Signed Wallet", wagerUnit: "SOL" }),
   });
   assert(verified.submitted?.verified === true, "token-backed leaderboard row should be verified");
   assert(verified.submitted?.walletLabel === "Signed Wallet", "verified leaderboard wallet label missing");
+  assert(verified.submitted?.wagerUnit === "SOL", "verified leaderboard row should preserve SOL wager unit");
 
   const leaderboard = await fetchJson(`${origin}/leaderboard`);
   assert(leaderboard.entries?.some((entry) => entry.id === `${room}-manual` && !entry.verified), "leaderboard missing unverified manual row");
   assert(leaderboard.entries?.some((entry) => entry.id === `${room}-verified` && entry.verified), "leaderboard missing verified wallet row");
+  assert(leaderboard.entries?.some((entry) => entry.id === `${room}-verified` && entry.wagerUnit === "SOL"), "leaderboard missing verified SOL wager unit");
   assert(leaderboard.wagers?.some((entry) => entry.id === `${room}-verified` && entry.verified), "wager leaderboard missing verified row");
 
   console.log(`[memepire-wallet] challenge/login/verified leaderboard verified for ${room}`);

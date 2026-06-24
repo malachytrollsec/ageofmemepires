@@ -11,6 +11,7 @@ var pressure_btns := {}
 var arena_lbl: Label
 var wager_lbl: Label
 var wallet_btn: Button
+var wallet_status_lbl: Label
 var mp_btn: Button
 var leaderboard_panel: PanelContainer
 var leaderboard_list: VBoxContainer
@@ -88,7 +89,7 @@ func _ready() -> void:
 	add_child(band)
 
 	# wallet connect (top-right)
-	wallet_btn = _small_button("CONNECT WALLET")
+	wallet_btn = _small_button("CONNECT PHANTOM")
 	wallet_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	wallet_btn.offset_left = -224
 	wallet_btn.offset_right = -16
@@ -98,7 +99,6 @@ func _ready() -> void:
 	add_child(wallet_btn)
 	wallet_btn.pressed.connect(func(): Wallet.connect_wallet())
 	Wallet.changed.connect(_refresh_wallet)
-	_refresh_wallet()
 
 	# multiplayer (below wallet)
 	mp_btn = _small_button("MULTIPLAYER")
@@ -110,6 +110,18 @@ func _ready() -> void:
 	mp_btn.custom_minimum_size = Vector2(208, 32)
 	add_child(mp_btn)
 	mp_btn.pressed.connect(_toggle_lobby)
+
+	wallet_status_lbl = _label("", f_ui, 8, Game.COL_MUTED)
+	wallet_status_lbl.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	wallet_status_lbl.offset_left = -252
+	wallet_status_lbl.offset_right = -12
+	wallet_status_lbl.offset_top = 94
+	wallet_status_lbl.offset_bottom = 132
+	wallet_status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	wallet_status_lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	wallet_status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(wallet_status_lbl)
+	_refresh_wallet()
 
 	# persistent leaderboard (top-left, local fallback while the web board loads)
 	leaderboard_panel = PanelContainer.new()
@@ -237,6 +249,7 @@ func _ready() -> void:
 	_build_lobby()
 	move_child(wallet_btn, get_child_count() - 1)
 	move_child(mp_btn, get_child_count() - 1)
+	move_child(wallet_status_lbl, get_child_count() - 1)
 	move_child(lobby, get_child_count() - 1)
 	Net.status_changed.connect(func(t): if net_status_lbl: net_status_lbl.text = t)
 	Net.roster_changed.connect(_refresh_roster)
@@ -270,20 +283,30 @@ func _menu_panel() -> StyleBox:
 	return _texture_style(UI_RD_PANEL, 22.0, 18.0)
 
 func _refresh_wallet() -> void:
-	if Wallet.connected:
-		if Wallet.verified:
-			wallet_btn.text = "SOL  " + Wallet.short()
-			wallet_btn.add_theme_color_override("font_color", Game.COL_ACCENT_BRIGHT)
-		else:
-			wallet_btn.text = "TICKET MODE"
-			wallet_btn.add_theme_color_override("font_color", Game.COL_MUTED)
+	if Wallet.verified:
+		wallet_btn.text = "SOL  " + Wallet.short()
+		wallet_btn.add_theme_color_override("font_color", Game.COL_ACCENT_BRIGHT)
+		_set_wallet_status("VERIFIED SOL WAGER\nSIGNED LEADERBOARD", Game.COL_ACCENT_BRIGHT)
 	elif Wallet.last_error != "":
-		wallet_btn.text = "WALLET ERROR"
-		wallet_btn.add_theme_color_override("font_color", Game.COL_ENEMY)
-	else:
-		wallet_btn.text = "CONNECT WALLET"
+		wallet_btn.text = "CONNECT PHANTOM"
 		wallet_btn.add_theme_color_override("font_color", Game.COL_BONE)
+		var status := "TICKET MODE ACTIVE\nPHANTOM NOT FOUND" if Wallet.last_error == "Phantom not found" else "TICKET MODE ACTIVE\nSIGNATURE NEEDED"
+		_set_wallet_status(status, Game.COL_MUTED)
+	elif Wallet.connected:
+		wallet_btn.text = "VERIFYING"
+		wallet_btn.add_theme_color_override("font_color", Game.COL_ACCENT_BRIGHT)
+		_set_wallet_status("SIGN WALLET MESSAGE\nSOL BOARD PENDING", Game.COL_ACCENT_BRIGHT)
+	else:
+		wallet_btn.text = "CONNECT PHANTOM"
+		wallet_btn.add_theme_color_override("font_color", Game.COL_BONE)
+		_set_wallet_status("TICKET MODE ACTIVE\nCONNECT FOR SOL", Game.COL_MUTED)
 	_refresh_wager()
+
+func _set_wallet_status(text: String, col: Color) -> void:
+	if not is_instance_valid(wallet_status_lbl):
+		return
+	wallet_status_lbl.text = text
+	wallet_status_lbl.add_theme_color_override("font_color", col)
 
 func _refresh_leaderboard_panel(entries := [], remote := false) -> void:
 	if not is_instance_valid(leaderboard_list):
@@ -317,7 +340,8 @@ func _leaderboard_web_row(item: Dictionary, rank: int) -> Label:
 	var name := String(Game.KINGS.get(king_id, {}).get("name", item.get("king", "?")))
 	var score := int(item.get("score", 0))
 	var result := String(item.get("result", "")).to_upper().left(1)
-	var tag := "SOL" if bool(item.get("verified", false)) else "TKT"
+	var unit := String(item.get("wagerUnit", "SOL" if bool(item.get("verified", false)) else "ticket")).to_upper()
+	var tag := "SOL" if unit == "SOL" else "TKT"
 	var row := _label("#%d %-8s %s %4d %s" % [rank, name.left(8), result, score, tag], f_ui, 9, col)
 	row.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.clip_text = true
@@ -420,6 +444,14 @@ func _apply_responsive_layout() -> void:
 		mp_btn.offset_top = top
 		mp_btn.offset_bottom = top + 30.0
 		mp_btn.custom_minimum_size = Vector2(width, 30)
+	if is_instance_valid(wallet_status_lbl):
+		var width := 172.0 if portrait else 240.0
+		var top := 82.0 if portrait else 94.0
+		wallet_status_lbl.offset_left = -width - 12.0
+		wallet_status_lbl.offset_right = -12.0
+		wallet_status_lbl.offset_top = top
+		wallet_status_lbl.offset_bottom = top + 42.0
+		wallet_status_lbl.add_theme_font_size_override("font_size", 7 if portrait else 8)
 
 func _display_size() -> Vector2:
 	if OS.has_feature("web"):
@@ -575,9 +607,14 @@ func _set_wager_status(text: String, can_answer := false) -> void:
 		wager_decline_btn.disabled = not can_answer
 
 func _local_wager_packet(status := "open") -> Dictionary:
+	var unit := "SOL" if Wallet.verified else "ticket"
 	return {
 		"ticketId": "%s-%s-%d" % [_room_code(), selected_king, Game.wager_stake],
 		"wagerStatus": status,
+		"unit": unit,
+		"verified": Wallet.verified,
+		"wallet": Wallet.address if Wallet.verified else "",
+		"walletLabel": Wallet.short() if Wallet.verified else "Ticket mode",
 		"stake": Game.wager_stake,
 		"tax": Game.wager_tax(),
 		"net": Game.wager_net(),
@@ -612,7 +649,7 @@ func _on_room_message(msg: Dictionary) -> void:
 		var stake := int(peer_wager_offer.get("stake", 0))
 		var payout := int(peer_wager_offer.get("winPayout", 0))
 		var label := String(peer_wager_offer.get("fromLabel", msg.get("from", "peer")))
-		var unit := "SOL" if Wallet.verified else "ticket"
+		var unit := String(peer_wager_offer.get("unit", "SOL" if bool(peer_wager_offer.get("verified", false)) else "ticket"))
 		_set_wager_status("%s offers %s %d, win %d" % [label, unit, stake, payout], true)
 		Game.publish_web_state({"peerWagerOffer": peer_wager_offer})
 	elif typ == "wager-receipt":

@@ -1,6 +1,6 @@
 extends Node
 ## Phantom wallet bridge for the web export (via JavaScriptBridge), with a demo
-## fallback for editor/native runs and browsers without Phantom installed.
+## fallback for editor/native runs. Web browsers without Phantom stay in ticket mode.
 
 signal changed
 
@@ -26,8 +26,10 @@ func connect_wallet() -> void:
 		return
 	var has_phantom = JavaScriptBridge.eval("!!(window.solana && window.solana.isPhantom)", true)
 	if not bool(has_phantom):
-		address = "DEMO%d" % Time.get_ticks_msec()
-		connected = true
+		address = ""
+		connected = false
+		last_error = "Phantom not found"
+		JavaScriptBridge.eval("window.__memepireWalletAddress=''; window.__memepireWalletToken=''; window.__memepireWalletVerified=false; window.__memepireWalletError='Phantom not found';", true)
 		changed.emit()
 		return
 	var immediate = JavaScriptBridge.eval("""

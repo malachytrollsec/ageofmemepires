@@ -222,6 +222,8 @@ func _post_web_result(king: String, won: bool, meta: Dictionary) -> void:
 		"stake": wager_stake,
 		"tax": wager_tax(),
 		"payout": payout,
+		"wagerUnit": "SOL" if Wallet.verified else "ticket",
+		"ticketMode": "sol" if Wallet.verified else "ticket",
 		"wallet": Wallet.address if Wallet.connected else "",
 		"walletLabel": Wallet.short() if Wallet.verified else "Ticket mode",
 		"verified": Wallet.verified,

@@ -843,6 +843,7 @@ function normalizeLeaderboardEntry(item = {}, walletAuth = null) {
   const verified = walletAuth
     ? Boolean(walletAuth.verified && walletAuth.address === wallet)
     : Boolean(item.verified && wallet);
+  const wagerUnit = String(item.wagerUnit || (verified ? "SOL" : "ticket")).toUpperCase() === "SOL" ? "SOL" : "ticket";
   return {
     id,
     endedAt,
@@ -865,6 +866,8 @@ function normalizeLeaderboardEntry(item = {}, walletAuth = null) {
     stake,
     tax: roundMoney(item.tax, 0, stake),
     payout,
+    wagerUnit,
+    ticketMode: wagerUnit === "SOL" ? "sol" : "ticket",
   };
 }
 
