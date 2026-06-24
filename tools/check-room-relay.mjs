@@ -6,6 +6,7 @@ import net from "node:net";
 const root = new URL("..", import.meta.url).pathname;
 const port = Number(process.env.MEMEPIRE_TEST_PORT || 8899);
 const room = `T${Date.now().toString(36).toUpperCase().slice(-6)}`;
+const hostWallet = "So11111111111111111111111111111111111111112";
 
 const server = spawn(process.execPath, ["serve-web.mjs", `--port=${port}`], {
   cwd: root,
@@ -30,6 +31,12 @@ try {
     wager: {
       ticketId: `${room}-ticket`,
       wagerStatus: "open",
+      unit: "SOL",
+      wagerUnit: "SOL",
+      ticketMode: "sol",
+      verified: true,
+      wallet: hostWallet,
+      walletLabel: "So11...1112",
       stake: 250,
       tax: 13,
       net: 237,
@@ -38,12 +45,20 @@ try {
       fromLabel: "$FARTCOIN",
     },
   });
-  await joiner.waitFor((msg) => msg.type === "wager-offer" && msg.wager?.ticketId === `${room}-ticket`);
+  const relayedOffer = await joiner.waitFor((msg) => msg.type === "wager-offer" && msg.wager?.ticketId === `${room}-ticket`);
+  assert(relayedOffer.wager?.unit === "SOL" && relayedOffer.wager?.wagerUnit === "SOL", "relayed wager offer lost SOL unit");
+  assert(relayedOffer.wager?.verified === true && relayedOffer.wager?.walletLabel === "So11...1112", "relayed wager offer lost verified wallet label");
   joiner.send({
     type: "wager-receipt",
     wager: {
       ticketId: `${room}-ticket`,
       wagerStatus: "accepted",
+      unit: "SOL",
+      wagerUnit: "SOL",
+      ticketMode: "sol",
+      verified: true,
+      wallet: hostWallet,
+      walletLabel: "So11...1112",
       stake: 250,
       tax: 13,
       net: 237,
@@ -74,7 +89,7 @@ try {
       rivalPop: { live: 3, queued: 0, cap: 20 },
       upgrades: { atk: 1, armor: 0, eco: 2, forge: true },
       rivalUpgrades: { atk: 0, armor: 1, eco: 1, forge: false },
-      wager: { stake: 250, tax: 13, net: 237, winPayout: 450 },
+      wager: { unit: "SOL", wagerUnit: "SOL", ticketMode: "sol", verified: true, wallet: hostWallet, walletLabel: "So11...1112", stake: 250, tax: 13, net: 237, winPayout: 450 },
       units: [{ id: 1 }, { id: 2 }],
       structures: [{ id: 3 }],
     },
@@ -101,7 +116,7 @@ try {
       rivalPop: { live: 2, queued: 0, cap: 20 },
       upgrades: { atk: 2, armor: 1, eco: 3, forge: true },
       rivalUpgrades: { atk: 1, armor: 1, eco: 1, forge: true },
-      wager: { stake: 250, tax: 13, net: 237, winPayout: 450 },
+      wager: { unit: "SOL", wagerUnit: "SOL", ticketMode: "sol", verified: true, wallet: hostWallet, walletLabel: "So11...1112", stake: 250, tax: 13, net: 237, winPayout: 450 },
       units: [{ id: 1 }, { id: 2 }],
       structures: [{ id: 3 }],
     },
@@ -145,10 +160,12 @@ try {
   assert(statusRoom?.latestSnapshot?.upgrades?.atk === 2, "room-status missing player upgrades");
   assert(statusRoom?.latestSnapshot?.rivalUpgrades?.forge === true, "room-status missing rival upgrades");
   assert(statusRoom?.latestSnapshot?.wager?.stake === 250, "room-status missing wager summary");
+  assert(statusRoom?.latestSnapshot?.wager?.wagerUnit === "SOL", "room-status missing SOL wager unit");
+  assert(statusRoom?.latestSnapshot?.wager?.walletLabel === "So11...1112", "room-status missing wager wallet label");
   assert(eventRoom?.events?.some((event) => event.type === "intent" && event.action === "attack"), "room-events missing attack intent");
   assert(eventRoom?.events?.some((event) => event.type === "intent-result" && event.accepted), "room-events missing accepted result");
-  assert(eventRoom?.events?.some((event) => event.type === "wager-offer" && event.wager?.stake === 250), "room-events missing wager offer");
-  assert(eventRoom?.events?.some((event) => event.type === "wager-receipt" && event.wager?.wagerStatus === "accepted"), "room-events missing accepted wager receipt");
+  assert(eventRoom?.events?.some((event) => event.type === "wager-offer" && event.wager?.stake === 250 && event.wager?.wagerUnit === "SOL"), "room-events missing SOL wager offer");
+  assert(eventRoom?.events?.some((event) => event.type === "wager-receipt" && event.wager?.wagerStatus === "accepted" && event.wager?.wagerUnit === "SOL"), "room-events missing accepted SOL wager receipt");
   assert(proof.ok && proofRoom?.ok, "room-proof should be ok");
   assert(proofRoom.checks?.every((check) => check.ok), "room-proof ok must require every proof check");
   assert(proofRoom.snapshotCount >= 1, "room-proof missing snapshot count");
@@ -157,6 +174,7 @@ try {
   assert(proofRoom.finishedSnapshot?.rivalPop?.live === 2, "room-proof missing finished rival population");
   assert(proofRoom.finishedSnapshot?.rivalUpgrades?.forge === true, "room-proof missing finished rival upgrades");
   assert(proofRoom.finishedSnapshot?.wager?.winPayout === 450, "room-proof missing finished wager payout");
+  assert(proofRoom.finishedSnapshot?.wager?.wagerUnit === "SOL", "room-proof missing finished SOL wager unit");
   assert(proofRoom.acceptedCount >= 1, "room-proof missing accepted count");
   assert(proofRoom.acceptedWagerCount >= 1, "room-proof missing accepted wager count");
 
@@ -172,6 +190,7 @@ try {
     seconds: 123,
     arena: "meadow",
     pressure: "standard",
+    wagerUnit: "SOL",
     stake: 250,
     tax: 13,
     payout: 451.25,

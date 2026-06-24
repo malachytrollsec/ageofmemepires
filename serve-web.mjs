@@ -321,9 +321,18 @@ function sanitizeRoomEvent(socket, message, typeOverride = "") {
   const intent = message.intent && typeof message.intent === "object" ? message.intent : {};
   const snapshot = message.snapshot && typeof message.snapshot === "object" ? message.snapshot : {};
   const wager = message.wager && typeof message.wager === "object" ? message.wager : {};
+  const wagerWallet = cleanWallet(wager.wallet);
+  const wagerVerified = Boolean(wager.verified && wagerWallet);
+  const wagerUnit = normalizeWagerUnit(wager.unit || wager.wagerUnit, wagerVerified);
   const safeWager = type.startsWith("wager-") ? {
     ticketId: String(wager.ticketId || "").replace(/[^A-Z0-9._:-]/gi, "").slice(0, 80),
     wagerStatus: String(wager.wagerStatus || "").replace(/[^a-z-]/gi, "").slice(0, 24),
+    unit: wagerUnit,
+    wagerUnit,
+    ticketMode: wagerUnit === "SOL" ? "sol" : "ticket",
+    verified: wagerVerified,
+    wallet: wagerVerified ? wagerWallet : "",
+    walletLabel: cleanString(wager.walletLabel || (wagerVerified ? shortWallet(wagerWallet) : "Ticket mode"), 48),
     stake: roundMoney(wager.stake, 0, 1000000),
     tax: roundMoney(wager.tax, 0, 1000000),
     net: roundMoney(wager.net, 0, 1000000),
@@ -409,7 +418,16 @@ function summarizeUpgrades(upgrades) {
 
 function summarizeWager(wager) {
   const data = wager && typeof wager === "object" ? wager : {};
+  const wallet = cleanWallet(data.wallet);
+  const verified = Boolean(data.verified && wallet);
+  const wagerUnit = normalizeWagerUnit(data.unit || data.wagerUnit, verified);
   return {
+    unit: wagerUnit,
+    wagerUnit,
+    ticketMode: wagerUnit === "SOL" ? "sol" : "ticket",
+    verified,
+    wallet: verified ? wallet : "",
+    walletLabel: cleanString(data.walletLabel || (verified ? shortWallet(wallet) : "Ticket mode"), 48),
     stake: roundMoney(data.stake, 0, 1000000),
     tax: roundMoney(data.tax, 0, 1000000),
     net: roundMoney(data.net, 0, 1000000),
@@ -751,6 +769,16 @@ function cleanWallet(value) {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet) ? wallet : "";
 }
 
+function shortWallet(wallet) {
+  const clean = cleanWallet(wallet);
+  if (clean.length <= 12) return clean;
+  return `${clean.slice(0, 4)}...${clean.slice(-4)}`;
+}
+
+function normalizeWagerUnit(value, verified = false) {
+  return String(value || (verified ? "SOL" : "ticket")).toUpperCase() === "SOL" ? "SOL" : "ticket";
+}
+
 function cleanString(value, max = 120) {
   return String(value || "").trim().slice(0, max);
 }
@@ -843,7 +871,7 @@ function normalizeLeaderboardEntry(item = {}, walletAuth = null) {
   const verified = walletAuth
     ? Boolean(walletAuth.verified && walletAuth.address === wallet)
     : Boolean(item.verified && wallet);
-  const wagerUnit = String(item.wagerUnit || (verified ? "SOL" : "ticket")).toUpperCase() === "SOL" ? "SOL" : "ticket";
+  const wagerUnit = normalizeWagerUnit(item.wagerUnit || item.unit, verified);
   return {
     id,
     endedAt,
