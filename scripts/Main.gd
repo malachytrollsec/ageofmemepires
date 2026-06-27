@@ -8,6 +8,10 @@ const EDGE_PAN_SPEED := 500.0
 const CAMERA_ZOOM_MIN := 0.6
 const CAMERA_ZOOM_MAX := 1.8
 const CAMERA_ZOOM_STEP := 0.12
+const SELECTION_CLICK_RADIUS := 8.0
+const ORDER_RESOURCE_RADIUS := 92.0
+const ORDER_STRUCTURE_RADIUS := 96.0
+const ORDER_UNIT_RADIUS := 54.0
 const AI_FREE_SPAWN_START := 30.0
 const FIRST_WAVE_START := 24.0
 const ENEMY_ATTACK_GRACE := 36.0
@@ -240,6 +244,8 @@ func _ready() -> void:
 		call_deferred("_input_flow_smoke")
 	if "--mouse-input-smoke" in OS.get_cmdline_args() or "--mouse-input-smoke" in OS.get_cmdline_user_args():
 		call_deferred("_mouse_input_smoke")
+	if "--left-click-order-smoke" in OS.get_cmdline_args() or "--left-click-order-smoke" in OS.get_cmdline_user_args():
+		call_deferred("_left_click_order_smoke")
 	if "--camera-zoom-smoke" in OS.get_cmdline_args() or "--camera-zoom-smoke" in OS.get_cmdline_user_args():
 		call_deferred("_camera_zoom_smoke")
 	if "--double-click-select-smoke" in OS.get_cmdline_args() or "--double-click-select-smoke" in OS.get_cmdline_user_args():
@@ -802,6 +808,51 @@ func _mouse_input_smoke() -> void:
 	print("MOUSE_INPUT_SMOKE select=%s zoom=%s order=%s ok=%s" % [str(select_ok).to_lower(), str(zoom_ok).to_lower(), str(order_ok).to_lower(), str(ok).to_lower()])
 	get_tree().quit(0 if ok else 1)
 
+func _left_click_order_smoke() -> void:
+	Game.net_mode = ""
+	Game.my_team = 0
+	for u in units:
+		if _node_alive(u):
+			u.selected = false
+	var villager: Unit = null
+	for u in units:
+		if _node_alive(u) and u.team == 0 and u.kind == "villager":
+			villager = u
+			break
+	if villager == null or food_nodes.is_empty():
+		print("LEFT_CLICK_ORDER_SMOKE move=false gather=false keepSelection=false ok=false")
+		get_tree().quit(1)
+		return
+	villager.selected = true
+	var move_pos := WORLD * 0.5
+	var press_move := InputEventMouseButton.new()
+	press_move.button_index = MOUSE_BUTTON_LEFT
+	press_move.pressed = true
+	press_move.position = _world_to_screen(move_pos)
+	_input(press_move)
+	var release_move := InputEventMouseButton.new()
+	release_move.button_index = MOUSE_BUTTON_LEFT
+	release_move.pressed = false
+	release_move.position = _world_to_screen(move_pos)
+	_input(release_move)
+	var move_ok := villager.target.distance_to(move_pos) < 2.0 and villager.gather_target == null and villager.selected
+	var resource: FoodNode = food_nodes[food_nodes.size() - 1]
+	var press_gather := InputEventMouseButton.new()
+	press_gather.button_index = MOUSE_BUTTON_LEFT
+	press_gather.pressed = true
+	press_gather.position = _world_to_screen(resource.position)
+	_input(press_gather)
+	var release_gather := InputEventMouseButton.new()
+	release_gather.button_index = MOUSE_BUTTON_LEFT
+	release_gather.pressed = false
+	release_gather.position = _world_to_screen(resource.position)
+	_input(release_gather)
+	var gather_ok := villager.gather_target == resource and villager.selected
+	var keep_selection_ok := _selected().size() == 1 and villager.selected
+	var ok := move_ok and gather_ok and keep_selection_ok
+	print("LEFT_CLICK_ORDER_SMOKE move=%s gather=%s keepSelection=%s ok=%s" % [str(move_ok).to_lower(), str(gather_ok).to_lower(), str(keep_selection_ok).to_lower(), str(ok).to_lower()])
+	get_tree().quit(0 if ok else 1)
+
 func _camera_zoom_smoke() -> void:
 	var before := zoom_level
 	cmd_zoom_in()
@@ -882,7 +933,7 @@ func _minimap_command_smoke() -> void:
 			break
 	var order_pos := Vector2(WORLD.x * 0.46, WORLD.y * 0.36)
 	minimap_click(order_pos, MOUSE_BUTTON_RIGHT)
-	var ordered := selected_unit != null and selected_unit.target.distance_to(order_pos + Vector2(-39, 0)) < 2.0
+	var ordered := selected_unit != null and selected_unit.target.distance_to(order_pos) < 2.0
 	var rally_pos := Vector2(WORLD.x * 0.38, WORLD.y * 0.66)
 	rally_set = true
 	minimap_click(rally_pos, MOUSE_BUTTON_LEFT)
@@ -2135,7 +2186,10 @@ func _handle_mouse_button(button_index: int, pressed: bool, double_click := fals
 		else:
 			selecting = false
 			sel_now = pos
-			_finish_selection(shift_pressed, sel_double_click)
+			if _left_click_should_issue_order(pos, shift_pressed, sel_double_click):
+				_issue_order(pos)
+			else:
+				_finish_selection(shift_pressed, sel_double_click)
 			sel_double_click = false
 			queue_redraw()
 		return true
@@ -2225,7 +2279,7 @@ func _control_group_slot_for_key(keycode: int) -> int:
 
 func _finish_selection(additive := false, double_click := false) -> void:
 	var rect := Rect2(sel_start, sel_now - sel_start).abs()
-	var click := rect.size.length() < 8.0
+	var click := rect.size.length() < SELECTION_CLICK_RADIUS
 	var team := _controlled_team()
 	if click and double_click:
 		var picked_unit := _unit_at(sel_now, team)
@@ -2252,6 +2306,14 @@ func _finish_selection(additive := false, double_click := false) -> void:
 			picked = true
 	Game.selection_changed.emit(_selected().size())
 	_publish_selection_state()
+
+func _left_click_should_issue_order(world_pos: Vector2, additive := false, double_click := false) -> bool:
+	if additive or double_click or _selected().is_empty():
+		return false
+	var rect := Rect2(sel_start, sel_now - sel_start).abs()
+	if rect.size.length() >= SELECTION_CLICK_RADIUS:
+		return false
+	return _unit_at(world_pos, _controlled_team()) == null
 
 func _unit_at(world_pos: Vector2, team: int) -> Unit:
 	var best: Unit = null
@@ -2321,6 +2383,18 @@ func _unit_group_center(target_units: Array) -> Vector2:
 			sum += u.position
 			count += 1
 	return sum / maxf(float(count), 1.0)
+
+func _formation_offset_for_index(index: int, count: int) -> Vector2:
+	if count <= 1:
+		return Vector2.ZERO
+	var cols := maxi(1, ceili(sqrt(float(count))))
+	var rows := maxi(1, ceili(float(count) / float(cols)))
+	var col := index % cols
+	var row := int(index / cols)
+	return Vector2(
+		(float(col) - float(cols - 1) * 0.5) * 34.0,
+		(float(row) - float(rows - 1) * 0.5) * 28.0
+	)
 
 func _issue_order(world_pos: Vector2) -> void:
 	if _is_joiner():
@@ -2881,15 +2955,19 @@ func _order_team_to_point(team: int, pos: Vector2) -> void:
 
 func _apply_order_to_units(target_units: Array, team: int, pos: Vector2) -> void:
 	# target priority mirrors ordinary RTS right-click: resource, enemy building, enemy unit, ground.
-	var food = _nearest(food_nodes, pos, 40.0)
-	var enemy_struct = _nearest_enemy_structure_for_team(pos, 70.0, team)
-	var enemy_unit = _nearest_enemy_unit_for_team(pos, 30.0, team)
+	var food = _nearest(food_nodes, pos, ORDER_RESOURCE_RADIUS)
+	var enemy_struct = _nearest_enemy_structure_for_team(pos, ORDER_STRUCTURE_RADIUS, team)
+	var enemy_unit = _nearest_enemy_unit_for_team(pos, ORDER_UNIT_RADIUS, team)
 	var i := 0
+	var live_count := 0
+	for item in target_units:
+		if _node_alive(item):
+			live_count += 1
 	for item in target_units:
 		var u := item as Unit
 		if not _node_alive(u):
 			continue
-		var spread := Vector2(float(i % 4) * 26 - 39, float(i / 4) * 26)
+		var spread := _formation_offset_for_index(i, live_count)
 		if food and u.kind == "villager":
 			u.order_gather(food)
 		elif enemy_struct:

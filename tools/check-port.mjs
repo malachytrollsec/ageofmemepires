@@ -329,6 +329,9 @@ requireText("main RTS mouse input", main, "func _screen_to_world");
 requireText("main RTS mouse input", main, "func _world_to_screen");
 requireText("main RTS mouse input", main, "_handle_mouse_button(mouse.button_index, mouse.pressed, mouse.double_click, mouse.shift_pressed, _screen_to_world(mouse.position))");
 requireText("main RTS mouse input", main, "func _publish_selection_state");
+requireText("main RTS left-click orders", main, "--left-click-order-smoke");
+requireText("main RTS left-click orders", main, "func _left_click_should_issue_order");
+requireText("main RTS left-click orders", main, "ORDER_RESOURCE_RADIUS");
 requireText("main RTS browser mouse state", main, '"controlledUnits": controlled_units');
 requireText("main RTS browser mouse state", main, '"screenX": screen_pos.x');
 requireText("main RTS browser mouse state", main, '"screenY": screen_pos.y');
@@ -742,6 +745,8 @@ const inputFlowSmoke = await run(godot, ["--headless", "--path", root, "--fixed-
 requireText("main input flow smoke", inputFlowSmoke, "INPUT_FLOW_SMOKE train=true build=true cancel=true select=true additive=true order=true edge=true ok=true");
 const mouseInputSmoke = await run(godot, ["--headless", "--path", root, "--fixed-fps", "30", "scenes/Main.tscn", "--", "--mouse-input-smoke"]);
 requireText("main mouse input smoke", mouseInputSmoke, "MOUSE_INPUT_SMOKE select=true zoom=true order=true ok=true");
+const leftClickOrderSmoke = await run(godot, ["--headless", "--path", root, "--fixed-fps", "30", "scenes/Main.tscn", "--", "--left-click-order-smoke"]);
+requireText("main left-click order smoke", leftClickOrderSmoke, "LEFT_CLICK_ORDER_SMOKE move=true gather=true keepSelection=true ok=true");
 const cameraZoomSmoke = await run(godot, ["--headless", "--path", root, "--fixed-fps", "30", "scenes/Main.tscn", "--", "--camera-zoom-smoke"]);
 requireText("main camera zoom smoke", cameraZoomSmoke, "CAMERA_ZOOM_SMOKE in=true out=true reset=true ok=true");
 requireText("main control groups", main, "var control_groups := {}");
