@@ -3,7 +3,7 @@ class_name FoodNode
 ## A gatherable resource node: food bush or wood grove.
 
 var res_kind := "food"   # "food" | "wood"
-var amount := 600
+var amount := 900
 var visual_seed := 0
 var _sprite: Sprite2D
 

@@ -12,9 +12,9 @@ const SELECTION_CLICK_RADIUS := 8.0
 const ORDER_RESOURCE_RADIUS := 92.0
 const ORDER_STRUCTURE_RADIUS := 96.0
 const ORDER_UNIT_RADIUS := 54.0
-const AI_FREE_SPAWN_START := 30.0
-const FIRST_WAVE_START := 24.0
-const ENEMY_ATTACK_GRACE := 36.0
+const AI_FREE_SPAWN_START := 42.0
+const FIRST_WAVE_START := 32.0
+const ENEMY_ATTACK_GRACE := 50.0
 const BATTLEFIELD_GRASS_PATH := "res://assets/terrain/terrain_grass_battlefield.png"
 const BATTLEFIELD_SAND_PATH := "res://assets/terrain/terrain_sand_battlefield.png"
 const GRASS_VARIATION_PATHS := [
@@ -152,6 +152,7 @@ func _ready() -> void:
 		_add_food(Vector2(470 + i * 64, WORLD.y - 410))
 	for i in range(3):
 		_add_resource(Vector2(360 + i * 78, WORLD.y - 560), "wood")
+	_seed_macro_resources()
 
 	for i in range(4):
 		_spawn_unit(Game.player_king, "villager", 0, Vector2(380 + i * 42, WORLD.y - 400))
@@ -498,12 +499,12 @@ func _remote_economy_smoke() -> void:
 	var rival_pop: Dictionary = snap.get("rivalPop", {})
 	var ok := bool(build_forge.get("accepted", false)) \
 		and bool(research_atk.get("accepted", false)) \
-		and not bool(train_siege.get("accepted", true)) \
+		and bool(train_siege.get("accepted", false)) \
 		and bool(build_market.get("accepted", false)) \
 		and _rival_has_forge \
 		and _rival_atk_bonus == 3.0 \
-		and _rival_timber == 23 \
-		and _rival_memp == 11 \
+		and _rival_timber == 5 \
+		and _rival_memp == 8 \
 		and int(rival_resources.get("timber", 0)) == _rival_timber \
 		and int(rival_pop.get("cap", 0)) == _rival_pop_cap
 	print("REMOTE_ECONOMY_SMOKE forge=%s research=%s siege=%s market=%s timber=%d memp=%d atk=%d ok=%s" % [str(bool(build_forge.get("accepted", false))).to_lower(), str(bool(research_atk.get("accepted", false))).to_lower(), str(bool(train_siege.get("accepted", false))).to_lower(), str(bool(build_market.get("accepted", false))).to_lower(), _rival_timber, _rival_memp, int(_rival_atk_bonus), str(ok).to_lower()])
@@ -1302,6 +1303,25 @@ func _add_resource(pos: Vector2, res_kind: String) -> FoodNode:
 	food_nodes.append(f)
 	return f
 
+func _seed_macro_resources() -> void:
+	var center := WORLD * 0.5
+	var food_offsets := [
+		Vector2(-220, -60),
+		Vector2(-150, 95),
+		Vector2(145, -95),
+		Vector2(230, 60),
+	]
+	var wood_offsets := [
+		Vector2(-315, -175),
+		Vector2(-270, 190),
+		Vector2(270, -190),
+		Vector2(315, 175),
+	]
+	for offset in food_offsets:
+		_add_food(center + offset)
+	for offset in wood_offsets:
+		_add_resource(center + offset, "wood")
+
 func _defensive_point_for_team(team: int) -> Vector2:
 	var base := player_keep if team == 0 else rival_keep
 	if not _node_alive(base):
@@ -1654,11 +1674,17 @@ func do_research(kind: String) -> void:
 
 func _market_income() -> void:
 	var any := false
+	for st in structures:
+		if _node_alive(st) and st.kind == "keep":
+			credit_resource(st.team, "food", 4)
+			credit_resource(st.team, "timber", 4)
+			credit_resource(st.team, "memp", 1)
+			any = true
 	for m in markets:
 		if _node_alive(m):
-			credit_resource(m.team, "food", 4)
-			credit_resource(m.team, "timber", 3)
-			credit_resource(m.team, "memp", 1)
+			credit_resource(m.team, "food", 8)
+			credit_resource(m.team, "timber", 6)
+			credit_resource(m.team, "memp", 2)
 			any = true
 	if any:
 		Game.resources_changed.emit()
@@ -1716,7 +1742,7 @@ func _process(delta: float) -> void:
 	_match_t += delta
 	if not _human_multiplayer():
 		_ai_t += delta
-		if _match_t >= AI_FREE_SPAWN_START and _ai_t >= 3.4:
+		if _match_t >= AI_FREE_SPAWN_START and _ai_t >= 5.0:
 			_ai_t = 0.0
 			_enemy_ai()
 		if _match_t >= FIRST_WAVE_START:
@@ -1739,9 +1765,9 @@ func _process(delta: float) -> void:
 
 func _wave_interval() -> float:
 	match Game.pressure:
-		"rush": return 28.0
-		"siege": return 38.0
-		_: return 40.0
+		"rush": return 34.0
+		"siege": return 46.0
+		_: return 48.0
 
 func _spawn_wave() -> void:
 	if not _node_alive(rival_keep):
@@ -1750,11 +1776,11 @@ func _spawn_wave() -> void:
 	Game.log_event("Wave %d incoming!" % Game.wave)
 	add_alert_ping(rival_keep.position, "danger")
 	Game.resources_changed.emit()
-	var size := 2 + Game.wave + (1 if Game.pressure == "siege" else 0)
+	var size := 2 + int(ceil(float(Game.wave) * 0.65)) + (1 if Game.pressure == "siege" else 0)
 	var pool := ["swordsman", "archer", "lancer"]
 	if Game.pressure == "siege" and Game.wave >= 2:
 		pool.append("siege")
-	for i in range(mini(size, 8)):
+	for i in range(mini(size, 7)):
 		var k: String = pool[randi() % pool.size()]
 		var u := _spawn_unit(Game.rival_king, k, 1, rival_keep.position + Vector2(randf_range(-70, 70), 90))
 		if _node_alive(player_keep):
@@ -1823,7 +1849,8 @@ func _enemy_ai() -> void:
 	for u in units:
 		if _node_alive(u) and u.team == 1:
 			rivals += 1
-	if rivals < 7:
+	var cap := 5 + (1 if Game.wave >= 4 else 0)
+	if rivals < cap:
 		var pool := ["swordsman", "archer", "lancer"]
 		var kind: String = pool[randi() % pool.size()]
 		var u := _spawn_unit(Game.rival_king, kind, 1, rival_keep.position + Vector2(randf_range(-50, 50), 80))

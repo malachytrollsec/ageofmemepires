@@ -180,11 +180,11 @@ func _gather(delta: float) -> void:
 			_work_t = 0.0
 			var g: float = Game.king_bonus(king, "gather") * get_parent().team_eco_bonus(team)
 			if is_instance_valid(gather_target) and gather_target.get("res_kind") == "wood":
-				var wood: int = gather_target.harvest(int(round(8 * g))) if gather_target.has_method("harvest") else int(round(8 * g))
+				var wood: int = gather_target.harvest(int(round(10 * g))) if gather_target.has_method("harvest") else int(round(10 * g))
 				if wood > 0:
 					get_parent().credit_resource(team, "timber", wood)
 			else:
-				var food: int = gather_target.harvest(int(round(10 * g))) if is_instance_valid(gather_target) and gather_target.has_method("harvest") else int(round(10 * g))
+				var food: int = gather_target.harvest(int(round(12 * g))) if is_instance_valid(gather_target) and gather_target.has_method("harvest") else int(round(12 * g))
 				if food > 0:
 					get_parent().credit_resource(team, "food", food)
 

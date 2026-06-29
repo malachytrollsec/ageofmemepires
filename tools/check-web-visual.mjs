@@ -130,11 +130,11 @@ try {
   assert(Number(matchState.wagerStake) === 350, `start URL stake did not reach match: ${JSON.stringify(matchState)}`);
   assert(Number(matchState.units) >= 8, `live match did not spawn enough opening units: ${JSON.stringify(matchState)}`);
   assert(Number(matchState.structures) >= 2, `live match did not spawn keeps/structures: ${JSON.stringify(matchState)}`);
-  assert(Number(matchState.food) === 420 && Number(matchState.timber) === 360 && Number(matchState.memp) === 90, `live match starting resources wrong: ${JSON.stringify(matchState)}`);
+  assert(Number(matchState.food) === 560 && Number(matchState.timber) === 460 && Number(matchState.memp) === 120, `live match starting resources wrong: ${JSON.stringify(matchState)}`);
   assert(Number(matchState.pop) >= 6 && Number(matchState.popCap) >= 24, `live match opening population wrong: ${JSON.stringify(matchState)}`);
   const selectionSummaryState = await waitForSelectionSummaryPreview(cdp, matchSession);
   assert(Number(selectionSummaryState.selectionSummaryCount) === 2, `selection summary did not select preview units: ${JSON.stringify(selectionSummaryState)}`);
-  assert(String(selectionSummaryState.selectionSummaryComposition || "").includes("ISR WORK") && String(selectionSummaryState.selectionSummaryComposition || "").includes("ISR INF"), `selection composition missing expected unit labels: ${JSON.stringify(selectionSummaryState)}`);
+  assert(String(selectionSummaryState.selectionSummaryComposition || "").includes("ANS SCOUT") && String(selectionSummaryState.selectionSummaryComposition || "").includes("ANS CLAW"), `selection composition missing expected unit labels: ${JSON.stringify(selectionSummaryState)}`);
   assert(selectionSummaryState.selectionSummaryOrder === "MIXED", `selection order summary wrong: ${JSON.stringify(selectionSummaryState)}`);
   await captureNonTrivialScreenshot(cdp, matchSession, matchShotPath);
 

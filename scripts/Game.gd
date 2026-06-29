@@ -23,15 +23,15 @@ const KINGS := {
 }
 
 const COSTS := {
-	"villager": {"food": 50},
+	"villager": {"food": 45},
 	"swordsman": {"food": 60, "timber": 20},
 	"archer": {"food": 45, "timber": 35},
 	"lancer": {"food": 70, "timber": 30},
 	"siege": {"food": 90, "timber": 60, "memp": 20},
-	"house": {"timber": 75},
-	"forge": {"timber": 120, "memp": 30},
-	"tower": {"timber": 100},
-	"market": {"timber": 90, "memp": 20},
+	"house": {"timber": 60},
+	"forge": {"timber": 105, "memp": 25},
+	"tower": {"timber": 90},
+	"market": {"timber": 70, "memp": 10},
 	"upgrade_atk": {"food": 90, "memp": 40},
 	"upgrade_armor": {"timber": 90, "memp": 40},
 	"upgrade_eco": {"food": 110, "timber": 60},
@@ -124,9 +124,9 @@ func unit_label(kind: String, king := "") -> String:
 	return String(UNIT_NAME.get(kind, kind.to_upper()))
 
 # --- Economy ---
-const START_FOOD := 420
-const START_TIMBER := 360
-const START_MEMP := 90
+const START_FOOD := 560
+const START_TIMBER := 460
+const START_MEMP := 120
 const START_POP_CAP := 24
 
 var food := START_FOOD
