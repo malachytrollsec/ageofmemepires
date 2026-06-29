@@ -16,6 +16,10 @@ NEW_SOURCE_DIR = Path(
     "/tmp/codex-remote-attachments/019ee8b3-1df6-7373-a50d-5223ab08a280/"
     "dd5d82e5-d3ec-4b66-adec-f9c982ab418a"
 )
+LATEST_SOURCE_DIR = Path(
+    "/tmp/codex-remote-attachments/019ee8b3-1df6-7373-a50d-5223ab08a280/"
+    "cf69723b-2395-42cd-9dab-1ad2d1e50c21"
+)
 GENERATED_DIR = ROOT / "assets" / "generated" / "avw_reskin"
 UNIT_DIR = ROOT / "assets" / "units"
 CELL = 48
@@ -24,11 +28,12 @@ SHEET = CELL * 4
 SPRITE_SOURCES = {
     ("wynn", "villager"): WYNN_SOURCE_DIR / "4-Photo-4.jpg",
     ("wynn", "swordsman"): WYNN_SOURCE_DIR / "5-Photo-5.jpg",
-    ("wynn", "lancer"): WYNN_SOURCE_DIR / "3-Photo-3.jpg",
+    ("wynn", "lancer"): LATEST_SOURCE_DIR / "1-Photo-1.jpg",
     ("wynn", "siege"): WYNN_SOURCE_DIR / "2-Photo-2.jpg",
     ("wynn", "archer"): NEW_SOURCE_DIR / "1-Photo-1.jpg",
     ("ansem", "villager"): NEW_SOURCE_DIR / "2-Photo-2.jpg",
     ("ansem", "swordsman"): NEW_SOURCE_DIR / "5-Photo-5.jpg",
+    ("ansem", "archer"): LATEST_SOURCE_DIR / "2-Photo-2.jpg",
     ("ansem", "lancer"): NEW_SOURCE_DIR / "3-Photo-3.jpg",
     ("ansem", "siege"): NEW_SOURCE_DIR / "4-Photo-4.jpg",
 }
