@@ -20,6 +20,7 @@ var leaderboard_status_lbl: Label
 var center_holder: CenterContainer
 var menu_box: VBoxContainer
 var title_logo: TextureRect
+var ca_btn: Button
 var lobby: Control
 var net_status_lbl: Label
 var net_roster_lbl: Label
@@ -34,6 +35,7 @@ const UI_RD_PANEL_LARGE := "res://assets/ui/ui_rd_panel_large.png"
 const UI_RD_BUTTON := "res://assets/ui/ui_rd_status_bar.png"
 const UI_RD_BUTTON_HOVER := "res://assets/ui/ui_rd_status_bar_blue.png"
 const MAIN_MENU_LOGO := "res://assets/ui/main_menu_logo.png"
+const CONTRACT_ADDRESS := "5N69WTcXAGJtE16DM4N2yf3qE5HWowpTCvaygAQansem"
 
 func _flat_menu_panel() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -161,6 +163,8 @@ func _ready() -> void:
 	title_logo.visible = true
 	vb.add_child(title_logo)
 	vb.add_child(_label("TWO TRADERS. ONE PIXEL WAR.", f_ui, 13, Game.COL_MUTED))
+	ca_btn = _ca_button()
+	vb.add_child(ca_btn)
 	vb.add_child(_label("CHOOSE YOUR SIDE", f_ui, 14, Game.COL_BONE))
 
 	var row := HBoxContainer.new()
@@ -280,6 +284,27 @@ func _small_button(text: String) -> Button:
 	b.add_theme_stylebox_override("normal", _button_style(false))
 	b.add_theme_stylebox_override("hover", _button_style(true))
 	b.add_theme_stylebox_override("pressed", _button_style(false, true))
+	return b
+
+func _ca_button() -> Button:
+	var b := Button.new()
+	b.text = "CA  " + CONTRACT_ADDRESS
+	b.tooltip_text = "Copy contract address"
+	b.add_theme_font_override("font", f_ui)
+	b.add_theme_font_size_override("font_size", 9)
+	b.add_theme_color_override("font_color", Game.COL_ACCENT_BRIGHT)
+	b.add_theme_color_override("font_hover_color", Game.COL_BONE)
+	b.custom_minimum_size = Vector2(640, 30)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.clip_text = true
+	b.add_theme_stylebox_override("normal", _flat_menu_panel())
+	b.add_theme_stylebox_override("hover", _texture_style(UI_RD_BUTTON_HOVER, 18.0, 11.0, Color(1.02, 1.08, 1.1, 1.0)))
+	b.add_theme_stylebox_override("pressed", _button_style(false, true))
+	b.pressed.connect(func():
+		DisplayServer.clipboard_set(CONTRACT_ADDRESS)
+		b.text = "CA COPIED  " + CONTRACT_ADDRESS
+		Game.publish_web_state({"contractAddress": CONTRACT_ADDRESS, "contractCopied": true})
+	)
 	return b
 
 func _menu_panel() -> StyleBox:
@@ -448,6 +473,9 @@ func _apply_responsive_layout() -> void:
 		menu_box.scale = Vector2(1.08, 1.08) if portrait else Vector2(desktop_scale, desktop_scale)
 	if is_instance_valid(title_logo):
 		title_logo.custom_minimum_size = Vector2(260, 110) if portrait else Vector2(320, 132)
+	if is_instance_valid(ca_btn):
+		ca_btn.custom_minimum_size = Vector2(460, 28) if portrait else Vector2(640, 30)
+		ca_btn.add_theme_font_size_override("font_size", 8 if portrait else 9)
 	if is_instance_valid(leaderboard_panel):
 		leaderboard_panel.visible = not portrait
 	if is_instance_valid(wallet_btn):

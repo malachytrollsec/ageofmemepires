@@ -525,11 +525,14 @@ function factionsPayload(req, url) {
 }
 
 function brandPayload() {
+  const contractAddress = "5N69WTcXAGJtE16DM4N2yf3qE5HWowpTCvaygAQansem";
   return {
     version: "avw-brand-v1",
     name: "Ansem vs Wynn",
     ticker: "AVW",
     chain: "Solana",
+    ca: contractAddress,
+    contractAddress,
     description: "Godot web RTS with two factions, wallet-signed leaderboards, room relay, and proof streams.",
   };
 }

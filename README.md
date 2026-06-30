@@ -2,6 +2,8 @@
 
 Godot RTS for ansemvswynn.com. Pick Ansem or Wynn, choose pressure and arena, build an economy, train units, crack the rival keep, and post wallet-backed results to the local leaderboard.
 
+Contract address: `5N69WTcXAGJtE16DM4N2yf3qE5HWowpTCvaygAQansem`
+
 ## Run
 
 ```sh
