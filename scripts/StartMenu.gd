@@ -860,9 +860,6 @@ func _card(king: String) -> Button:
 	var nm := _label(data["name"], f_ui, 12, data["color"])
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(nm)
-	var kd := _label(data["kingdom"], f_ui, 9, Game.COL_MUTED)
-	kd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(kd)
 	return b
 
 func _highlight() -> void:
