@@ -128,6 +128,8 @@ const START_FOOD := 560
 const START_TIMBER := 460
 const START_MEMP := 120
 const START_POP_CAP := 24
+const SPECIAL_RESOURCE_LABEL := "TAPE"
+const SPECIAL_RESOURCE_SHORT := "TP"
 
 var food := START_FOOD
 var timber := START_TIMBER
@@ -182,7 +184,7 @@ func cost_text(kind: String) -> String:
 	if int(c.get("timber", 0)) > 0:
 		parts.append("%dT" % int(c["timber"]))
 	if int(c.get("memp", 0)) > 0:
-		parts.append("%dM" % int(c["memp"]))
+		parts.append("%d%s" % [int(c["memp"]), SPECIAL_RESOURCE_SHORT])
 	return " ".join(parts)
 
 func _load_board() -> void:

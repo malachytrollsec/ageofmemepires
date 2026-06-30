@@ -2529,6 +2529,9 @@ func hud_timber() -> int:
 func hud_memp() -> int:
 	return Game.memp if _controlled_team() == 0 else _rival_memp
 
+func hud_controlled_king() -> String:
+	return _controlled_king()
+
 func hud_pop() -> int:
 	return _team_pop(_controlled_team())
 

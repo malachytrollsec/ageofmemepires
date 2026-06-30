@@ -51,16 +51,11 @@ const RESOURCE_ICONS := {
 }
 
 const COMMAND_ICONS := {
-	"villager": "res://assets/ui/command_icon_villager.png",
-	"swordsman": "res://assets/ui/command_icon_swordsman.png",
-	"archer": "res://assets/ui/command_icon_archer.png",
-	"lancer": "res://assets/ui/command_icon_lancer.png",
-	"siege": "res://assets/ui/command_icon_siege.png",
 	"house": "res://assets/ui/command_icon_house.png",
 	"forge": "res://assets/ui/command_icon_forge.png",
 	"tower": "res://assets/ui/command_icon_tower.png",
 	"market": "res://assets/ui/command_icon_market.png",
-	"upgrade_atk": "res://assets/ui/command_icon_swordsman.png",
+	"upgrade_atk": "res://assets/ui/control_icon_attack.png",
 	"upgrade_armor": "res://assets/ui/command_icon_forge.png",
 	"upgrade_eco": "res://assets/ui/command_icon_market.png",
 }
@@ -198,10 +193,13 @@ func _value_chip(text: String, icon_key := "") -> Array:
 func _accent_button(text: String) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.clip_text = true
+	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	b.add_theme_font_override("font", f_ui)
 	b.add_theme_font_size_override("font_size", 11)
 	b.add_theme_color_override("font_color", Game.COL_BONE)
 	b.add_theme_color_override("font_hover_color", Game.COL_ACCENT_BRIGHT)
+	b.add_theme_color_override("font_disabled_color", Color(Game.COL_MUTED, 0.88))
 	b.custom_minimum_size = Vector2(96, 34)
 	b.add_theme_stylebox_override("normal", _button_panel(false))
 	b.add_theme_stylebox_override("hover", _button_panel(true))
@@ -209,6 +207,15 @@ func _accent_button(text: String) -> Button:
 	return b
 
 func _apply_command_icon(b: Button, kind: String) -> void:
+	if Game.UNIT_KINDS.has(kind):
+		var unit_tex := _unit_command_icon(kind)
+		if unit_tex != null:
+			b.icon = unit_tex
+			b.expand_icon = false
+			b.add_theme_constant_override("icon_max_width", 40)
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.add_theme_constant_override("icon_spacing", 5)
+			return
 	var path: String = COMMAND_ICONS.get(kind, "")
 	if path == "":
 		return
@@ -220,6 +227,45 @@ func _apply_command_icon(b: Button, kind: String) -> void:
 	b.add_theme_constant_override("icon_max_width", 28)
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_constant_override("icon_spacing", 5)
+
+func _unit_command_icon(kind: String) -> Texture2D:
+	var king := Game.player_king
+	if main != null and is_instance_valid(main) and main.has_method("hud_controlled_king"):
+		king = String(main.hud_controlled_king())
+	var sheet: Texture2D = load(Game.unit_sheet(king, kind))
+	if sheet == null:
+		return null
+	var region := _visible_unit_icon_region(sheet)
+	var atlas := AtlasTexture.new()
+	atlas.atlas = sheet
+	atlas.region = region
+	return atlas
+
+func _visible_unit_icon_region(sheet: Texture2D) -> Rect2:
+	var cell_w := int(sheet.get_width() / 4.0)
+	var cell_h := int(sheet.get_height() / 4.0)
+	var img := sheet.get_image()
+	if img == null:
+		return Rect2(0, 0, cell_w, cell_h)
+	var min_x := cell_w
+	var min_y := cell_h
+	var max_x := -1
+	var max_y := -1
+	for y in range(cell_h):
+		for x in range(cell_w):
+			if img.get_pixel(x, y).a > 0.05:
+				min_x = mini(min_x, x)
+				min_y = mini(min_y, y)
+				max_x = maxi(max_x, x)
+				max_y = maxi(max_y, y)
+	if max_x < 0 or max_y < 0:
+		return Rect2(0, 0, cell_w, cell_h)
+	var pad := 2
+	min_x = maxi(0, min_x - pad)
+	min_y = maxi(0, min_y - pad)
+	max_x = mini(cell_w - 1, max_x + pad)
+	max_y = mini(cell_h - 1, max_y + pad)
+	return Rect2(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
 
 func _apply_control_icon(b: Button, kind: String) -> void:
 	var path: String = CONTROL_ICONS.get(kind, "")
@@ -247,7 +293,7 @@ func _build_topbar() -> void:
 
 	var r1 = _value_chip("FOOD 0", "food"); lbl_food = r1[1]; bar.add_child(r1[0])
 	var r2 = _value_chip("TIMBER 0", "timber"); lbl_timber = r2[1]; bar.add_child(r2[0])
-	var r3 = _value_chip("MEMP 0", "memp"); lbl_memp = r3[1]; bar.add_child(r3[0])
+	var r3 = _value_chip("%s 0" % Game.SPECIAL_RESOURCE_LABEL, "memp"); lbl_memp = r3[1]; bar.add_child(r3[0])
 	var r4 = _value_chip("POP 0/0"); lbl_pop = r4[1]; bar.add_child(r4[0])
 	var r5 = _value_chip("KO 0"); lbl_kills = r5[1]; bar.add_child(r5[0])
 	var rw = _value_chip("WAVE 0"); lbl_wave = rw[1]; bar.add_child(rw[0])
@@ -328,16 +374,25 @@ func _build_command_card() -> void:
 
 	for k in Game.UNIT_KINDS:
 		var kind: String = k
-		row.add_child(_cmd_button(Game.unit_label(kind, Game.player_king), kind, func(): main.train_unit(kind)))
+		row.add_child(_cmd_button(_unit_button_label(kind), kind, func(): main.train_unit(kind)))
 
 func _cmd_button(text: String, kind: String, action: Callable) -> Button:
 	var b := _accent_button(text)
 	_apply_command_icon(b, kind)
-	b.tooltip_text = "%s: train for %s" % [text, Game.cost_text(kind)]
+	b.tooltip_text = "%s: train for %s" % [Game.unit_label(kind, Game.player_king), Game.cost_text(kind)]
 	b.pressed.connect(action)
-	_cost_buttons.append({"btn": b, "kind": kind, "label": text})
+	_cost_buttons.append({"btn": b, "kind": kind, "label": text, "keep_enabled": true})
 	_cmd_buttons.append(b)
 	return b
+
+func _unit_button_label(kind: String) -> String:
+	match kind:
+		"villager": return "SCOUT"
+		"swordsman": return "BLADE"
+		"archer": return "RANGE"
+		"lancer": return "FAST"
+		"siege": return "HEAVY"
+	return kind.to_upper()
 
 func _section_label(text: String) -> Label:
 	var l := Label.new()
@@ -599,7 +654,7 @@ func _apply_responsive_layout() -> void:
 	if not portrait:
 		bottom_right = -edge - side_w - gap
 	var ctrl_w := 40.0 if compact else 44.0
-	var cmd_w := 104.0 if compact else 120.0
+	var cmd_w := 96.0 if compact else 108.0
 	if portrait:
 		ctrl_w = 38.0
 		cmd_w = 90.0
@@ -660,7 +715,7 @@ func _apply_responsive_layout() -> void:
 		command_card.offset_top = -86.0
 		command_card.offset_bottom = -edge
 		if is_instance_valid(command_status):
-			command_status.custom_minimum_size = Vector2(104.0 if portrait else 148.0, 0)
+			command_status.custom_minimum_size = Vector2(104.0 if portrait else 122.0 if compact else 128.0, 0)
 		if is_instance_valid(command_row):
 			command_row.add_theme_constant_override("separation", 5 if compact else 8)
 			command_row.add_theme_constant_override("v_separation", 5 if compact else 6)
@@ -692,7 +747,7 @@ func _display_size() -> Vector2:
 func _refresh() -> void:
 	lbl_food.text = "FOOD %d" % main.hud_food()
 	lbl_timber.text = "TIMBER %d" % main.hud_timber()
-	lbl_memp.text = "MEMP %d" % main.hud_memp()
+	lbl_memp.text = "%s %d" % [Game.SPECIAL_RESOURCE_LABEL, main.hud_memp()]
 	lbl_pop.text = "POP %d/%d" % [main.hud_pop(), main.hud_pop_cap()]
 	lbl_kills.text = "KO %d" % Game.kills
 	lbl_wave.text = "WAVE %d" % Game.wave
@@ -702,8 +757,9 @@ func _refresh() -> void:
 		var afford: bool = main.hud_can_afford(kind)
 		var b: Button = entry["btn"]
 		b.text = String(entry.get("label", kind.to_upper()))
-		b.disabled = not afford
-		b.modulate = Color(1, 1, 1, 1.0) if afford else Color(1, 1, 1, 0.45)
+		var keep_enabled := bool(entry.get("keep_enabled", false))
+		b.disabled = false if keep_enabled else not afford
+		b.modulate = Color(1, 1, 1, 1.0) if afford or keep_enabled else Color(1, 1, 1, 0.74)
 
 func _on_selection(count: int) -> void:
 	lbl_sel.text = "SELECTED %d" % count
